@@ -35,11 +35,6 @@ def write_lines(flist, OUT_dir, NAME, split, image_id, lines):
             f.write(line)
     print('Written: {}'.format(yolo))
 
-_min_xmin = 9999999999
-_min_ymin = 9999999999
-_max_xmax = 0
-_max_ymax = 0
-
 if __name__=='__main__':
     #####
     # input: follow the procedure described on https://pjreddie.com/darknet/yolo/
