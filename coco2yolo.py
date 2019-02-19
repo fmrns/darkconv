@@ -35,7 +35,7 @@ def write_lines(flist, OUT_dir, NAME, split, image_id, lines):
             f.write(line)
     print('Written: {}'.format(yolo))
 
-if __name__=='__main__':
+def main():
     #####
     # input: follow the procedure described on https://pjreddie.com/darknet/yolo/
     COCO_images_dir = '/data/huge/COCO/coco/images'
@@ -93,5 +93,8 @@ if __name__=='__main__':
                     flist.write('{}\n'.format(img))
                 else:
                     print('Skipping {}...'.format(bbox_in))
+
+if __name__=='__main__':
+    main()
 
 # end of file
