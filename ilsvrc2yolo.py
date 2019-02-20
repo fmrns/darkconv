@@ -11,7 +11,8 @@ import math
 from xml.etree import ElementTree as ET
 use_mapping=False
 if use_mapping:
-    from label_dog import DogILSVRCLabelNames as ILSVRCLabelNames
+    #from label_dog import DogILSVRCLabelNames as ILSVRCLabelNames
+    from label_chihuahua import ChihuahuaILSVRCLabelNames as ILSVRCLabelNames
 else:
     from label_default import ILSVRCLabelNames
 resume=False
@@ -61,15 +62,16 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         label = tree_obj.find('name').text
         try:
             label_index = ILSVRCLabelNames.label_index(label)
-            if 0 > label_index:
-                assert use_mapping
-                use_for_negative = True
-                continue
         except:
             assert use_mapping
             if prev_ignore != label:
                 prev_ignore = label
-                print(',Ignoring {}'.format(label), end='', flush=True)
+                #print(',Ignoring {}'.format(label), end='', flush=True)
+                print('.', end='', flush=True)
+            continue
+        if not isinstance(label_index, (tuple, list)) and 0 > label_index:
+            assert use_mapping
+            use_for_negative = True
             continue
 
         is_difficult = (0 != int(tree_obj.find('difficult').text.strip()))
@@ -105,17 +107,18 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         #  width = 4
         #  center = (0 + 3) / 2 / (4-1) = 0.5
         #  w = (3 - 0 + 1) / 4 = 1
-        line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(
-            label_index,
-            (xmin + xmax) / 2.0 / (w - 1),
-            (ymin + ymax) / 2.0 / (h - 1),
-            (xmax - xmin + 1) / w,
-            (ymax - ymin + 1) / h)
-        lines.append(line)
-        if is_difficult:
-            _have_difficult = True
-        else:
-            lines_wo_difficult.append(line)
+        for li in label_index if isinstance(label_index, (tuple, list)) else ( label_index, ):
+            line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(
+                    li,
+                    (xmin + xmax) / 2.0 / (w - 1),
+                    (ymin + ymax) / 2.0 / (h - 1),
+                    (xmax - xmin + 1) / w,
+                    (ymax - ymin + 1) / h)
+            lines.append(line)
+            if is_difficult:
+                _have_difficult = True
+            else:
+                lines_wo_difficult.append(line)
 
     if lines_wo_difficult and yolo_wo_difficult:
         os.makedirs(os.path.dirname(yolo_wo_difficult), exist_ok=True)
@@ -145,8 +148,9 @@ def main():
     # input
     ILSVRC_dir = '/data/huge/ILSVRC'
     if use_mapping:
-        ILSVRCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
-        assert 0 == ILSVRCLabelNames.label_index('n02085620')
+        #ILSVRCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
+        ILSVRCLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
+        assert set((1, 0)) == set(ILSVRCLabelNames.label_index('n02085620'))
         assert 0 == ILSVRCLabelNames.label_index('n02085782')
         assert 0 == ILSVRCLabelNames.label_index('n02088364')
     else:
@@ -162,21 +166,20 @@ def main():
     #####
     # output
     if use_mapping:
-        OUT_dir = '/data/work/dog/00input-dog'
+        #OUT_dir = '/data/work/dog/00input-dog'
+        OUT_dir = '/data/work/dog/00input-chihuahua'
     else:
         OUT_dir = '/data/huge/ILSVRC/yolo'
     NAME='ilsvrc'
 
-    out_dir = {}
     for d in ( 'images', 'labels', 'labels-wo-difficult', 'lists' ):
-        out_dir[d] = os.path.join(OUT_dir, d)
-        if not os.path.exists(out_dir[d]):
-            os.makedirs(out_dir[d], exist_ok=True)
-    if not os.path.exists(os.path.join(out_dir['images'], NAME)):
-        os.symlink(os.path.join(ILSVRC_dir, 'Data/CLS-LOC'), os.path.join(out_dir['images'], NAME))
+        if not os.path.exists(os.path.join(OUT_dir, d)):
+            os.makedirs(os.path.join(OUT_dir, d), exist_ok=True)
+    if not os.path.exists(os.path.join(OUT_dir, 'images', NAME)):
+        os.symlink(os.path.join(ILSVRC_dir, 'Data/CLS-LOC'), os.path.join(OUT_dir, 'images', NAME))
 
     # create labels and lists
-    with open(os.path.join(out_dir['lists'], NAME + '.txt'), 'w') as fo:
+    with open(os.path.join(OUT_dir, 'lists', NAME + '.txt'), 'w') as fo:
         for split, file in files.items():
             with open(file, 'r') as fi:
                 prev_yolo_dir = ''
@@ -185,8 +188,8 @@ def main():
                     if not id_: continue
                     id_ = id_[0]
                     xml               = os.path.join(ILSVRC_dir, 'Annotations/CLS-LOC',    split, id_ + '.xml')
-                    yolo              = os.path.join(out_dir['labels'],              NAME, split, id_ + '.txt')
-                    yolo_wo_difficult = os.path.join(out_dir['labels-wo-difficult'], NAME, split, id_ + '.txt')
+                    yolo              = os.path.join(OUT_dir, 'labels',              NAME, split, id_ + '.txt')
+                    yolo_wo_difficult = os.path.join(OUT_dir, 'labels-wo-difficult', NAME, split, id_ + '.txt')
                     img_stem = os.path.join('images', NAME, split, id_)
                     img = None
                     for ext in ('.JPEG', '.jpeg', '.jpg', '.png'):
@@ -214,7 +217,7 @@ def main():
     print('max ymax   / (height-1): {:f}'.format(_max_y_h))
     print('have difficult: {}'.format(_have_difficult))
     if not _have_difficult:
-        print('remove redundant directory manually: {}'.format(out_dir['labels-wo-difficult']))
+        print('remove redundant directory manually: {}'.format(os.path.join(OUT_dir, 'labels-wo-difficult')))
 
 # =============================================================================
 # max width : 4992.0

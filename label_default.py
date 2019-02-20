@@ -9,8 +9,8 @@ from label import LabelNames
 
 class OpenImagesLabelNames(LabelNames):
     @classmethod
-    def init(cls, file=None, is_csv=True):
-        super().init('/data/huge/OpenImages/labels/class-descriptions-boxable.csv' if file is None else file, expectes_num=601)
+    def init(cls, file=None):
+        super().init('/data/huge/OpenImages/labels/class-descriptions-boxable.csv' if file is None else file, expected_num=601, is_csv=True)
         assert '/m/0bt9lr' in cls.label_names()
         assert '/m/0306r'  in cls.label_names()
         return cls

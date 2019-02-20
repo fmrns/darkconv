@@ -11,7 +11,8 @@ import math
 from xml.etree import ElementTree as ET
 use_mapping=False
 if use_mapping:
-    from label_dog import DogVOCLabelNames as VOCLabelNames
+    #from label_dog import DogVOCLabelNames as VOCLabelNames
+    from label_chihuahua import ChihuahuaVOCLabelNames as VOCLabelNames
 else:
     from label_default import VOCLabelNames
 resume=False
@@ -62,19 +63,20 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         label = tree_obj.find('name').text
         try:
             label_index = VOCLabelNames.label_index(label)
-            if 0 > label_index:
-                assert use_mapping
-                use_for_negative = True
-                continue
         except:
             assert use_mapping
             if prev_ignore != label:
                 prev_ignore = label
-                print('Ignoring {}.'.format(label), flush=True)
+                #print('skip {},'.format(label), end='', flush=True)
+                print('.', end='', flush=True)
+            continue
+        if not isinstance(label_index, (tuple, list)) and 0 > label_index:
+            assert use_mapping
+            use_for_negative = True
             continue
 
         is_difficult = (0 != int(tree_obj.find('difficult').text.strip()))
-    
+
         tree_bbox = tree_obj.find('bndbox')
         xmin, ymin, xmax, ymax = tuple(map(lambda k: float(tree_bbox.find(k).text.strip()) - 1, ('xmin', 'ymin', 'xmax', 'ymax')))
         assert 0 <= math.floor(xmin) < w, '{}: xmin: {}, {}'.format(xml, xmin, w)
@@ -93,7 +95,7 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         if _max_y_h < ymax / (h - 1):
             _max_y_h = ymax / (h - 1)
             print('New max ymax / (height-1): {}'.format(_max_y_h))
-    
+
         # 0, 1:
         #  width=2
         #  center = (0 + 1) / 2 / (2-1) = 0.5
@@ -106,17 +108,18 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         #  width = 4
         #  center = (0 + 3) / 2 / (4-1) = 0.5
         #  w = (3 - 0 + 1) / 4 = 1
-        line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(
-            label_index,
-            (xmin + xmax) / 2.0 / (w - 1),
-            (ymin + ymax) / 2.0 / (h - 1),
-            (xmax - xmin + 1) / w,
-            (ymax - ymin + 1) / h)
-        lines.append(line)
-        if is_difficult:
-            _have_difficult = True
-        else:
-            lines_wo_difficult.append(line)
+        for li in label_index if isinstance(label_index, (tuple, list)) else ( label_index, ):
+            line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(
+                    li,
+                    (xmin + xmax) / 2.0 / (w - 1),
+                    (ymin + ymax) / 2.0 / (h - 1),
+                    (xmax - xmin + 1) / w,
+                    (ymax - ymin + 1) / h)
+            lines.append(line)
+            if is_difficult:
+                _have_difficult = True
+            else:
+                lines_wo_difficult.append(line)
 
     if lines_wo_difficult and yolo_wo_difficult:
         os.makedirs(os.path.dirname(yolo_wo_difficult), exist_ok=True)
@@ -126,11 +129,12 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
 
     is_used = False
     if use_for_negative or lines:
-        #have_anno = True
+        is_used = True
         os.makedirs(os.path.dirname(yolo), exist_ok=True)
         with open(yolo, 'w', newline='\n') as f:
             for line in lines:
                 f.write(line)
+        print('{},'.format(yolo), end='', flush=True)
 
     return is_used
 
@@ -138,25 +142,30 @@ def main():
     global _min_x_w, _min_y_h, _max_x_w, _max_y_h
     global _max_w, _max_h, _max_w_h, _max_h_w
     global _have_difficult
-    
+
     #####
     # input
+    #   label file: https://github.com/pjreddie/darknet/blob/master/data/voc.names
     VOC_dir = '/data/huge/VOC/VOCdevkit/VOC2012'
     if use_mapping:
-        VOCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/opt/darknet/data/voc.names')
-        assert 0 == VOCLabelNames.label_index('dog')
+        #VOCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/opt/darknet/data/voc.names')
+        VOCLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/opt/darknet/data/voc.names')
+        assert 0 == VOCLabelNames.label_index_dst('dog')
+        assert 0 <= VOCLabelNames.label_index_src('dog')
+        assert 0 > VOCLabelNames.label_index('cat')
     else:
         VOCLabelNames.init('/opt/darknet/data/voc.names')
         assert 0 <= VOCLabelNames.label_index('dog')
     files = {
-        'train': os.path.join(VOC_dir, 'ImageSets/Main/dog_train.txt'),
-          'val': os.path.join(VOC_dir, 'ImageSets/Main/dog_val.txt'),
+        'train': os.path.join(VOC_dir, 'ImageSets/Main/train.txt'),
+          'val': os.path.join(VOC_dir, 'ImageSets/Main/val.txt'),
     }
 
     #####
     # output
     if use_mapping:
-        OUT_dir = '/data/work/dog/00input-dog'
+        #OUT_dir = '/data/work/dog/00input-dog'
+        OUT_dir = '/data/work/dog/00input-chihuahua'
     else:
         OUT_dir = '/data/huge/VOC/yolo/VOC2012'
     NAME='voc2012'
@@ -174,7 +183,7 @@ def main():
                 prev_yolo_dir = ''
                 for line in fi:
                     id_ = line.split()
-                    if not id_ or int(id_[1]) < 1: continue
+                    if not id_ or (2 <= len(id_) and int(id_[1]) < 1): continue
                     id_ = id_[0]
                     xml               = os.path.join(VOC_dir, 'Annotations',               id_ + '.xml')
                     yolo              = os.path.join(OUT_dir, 'labels',              NAME, id_ + '.txt')
@@ -196,6 +205,7 @@ def main():
                     else:
                         assert use_mapping
 
+    print('')
     print('max width : {}'.format(_max_w))
     print('max height: {}'.format(_max_h))
     print('max width  / height    : {:f}'.format(_max_w_h))
@@ -206,7 +216,7 @@ def main():
     print('max ymax   / (height-1): {:f}'.format(_max_y_h))
     print('have difficult: {}'.format(_have_difficult))
     if not _have_difficult:
-        print('remove redundant directory manually: {}'.format(yolo_wo_difficult))
+        print('remove redundant directory manually: {}'.format(os.path.join(OUT_dir, 'labels-wo-difficult')))
 
 # =============================================================================
 # max width : 500.0

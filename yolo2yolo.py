@@ -70,7 +70,7 @@ def main():
                 for ext in ('.jpg', '.png', '.jpeg', ):
                     for ex in ( ext, ext.upper() ):
                         if os.path.isfile(os.path.join(OUT_dir, img_stem + ex)):
-                            img = img_stem + ext
+                            img = img_stem + ex
                             break
                 if not img: raise FileNotFoundError(img_stem)
                 img = pathlib.PurePath(img).as_posix()

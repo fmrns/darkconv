@@ -11,7 +11,8 @@ import pandas as pd
 import csv
 use_mapping=False
 if use_mapping:
-    from label_dog import DogOpenImagesLabelNames as OpenImagesLabelNames
+    #from label_dog import DogOpenImagesLabelNames as OpenImagesLabelNames
+    from label_chihuahua import ChihuahuaOpenImagesLabelNames as OpenImagesLabelNames
 else:
     from label_default import OpenImagesLabelNames
 resume=False
@@ -47,8 +48,9 @@ def main():
     # input
     OpenImages_dir = '/data/huge/OpenImages'
     if use_mapping:
-        OpenImagesLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/OpenImages/labels/class-descriptions-boxable.csv')
-        assert 0 == OpenImagesLabelNames.label_index('/m/0bt9lr')
+        #OpenImagesLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/OpenImages/labels/class-descriptions-boxable.csv')
+        OpenImagesLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/data/huge/OpenImages/labels/class-descriptions-boxable.csv')
+        assert '/m/0bt9lr' in OpenImagesLabelNames.label_names()
     else:
         OpenImagesLabelNames.init('/data/huge/OpenImages/labels/class-descriptions-boxable.csv')
         assert 0 <= OpenImagesLabelNames.label_index('/m/0bt9lr')
@@ -58,7 +60,8 @@ def main():
     #####
     # output
     if use_mapping:
-        OUT_dir = '/data/work/dog/00input-dog'
+        #OUT_dir = '/data/work/dog/00input-dog'
+        OUT_dir = '/data/work/dog/00input-chihuahua'
     else:
         OUT_dir = '/data/huge/OpenImages/yolo'
     NAME='openimages'
@@ -98,20 +101,21 @@ def main():
                         use_for_negative = False
                     try:
                         label_index = OpenImagesLabelNames.label_index(row['LabelName'])
-                        if 0 > label_index:
-                            assert use_mapping
-                            use_for_negative = True
-                            lines_id = row['ImageID']
-                            continue
-                        if row['ImageID'] in ignore_image_ids[split]:
-                            print('Skipping {}: Not verified...'.format(row['ImageID']))
-                            continue
                     except:
                         assert use_mapping
                         if prev_skip != row['ImageID'][:2]:
                             prev_skip = row['ImageID'][:2]
                             print('Skipping {}:{}...'.format(split, prev_skip))
                         continue
+                    if not isinstance(label_index, (tuple, list)) and 0 > label_index:
+                        assert use_mapping
+                        use_for_negative = True
+                        lines_id = row['ImageID']
+                        continue
+                    if row['ImageID'] in ignore_image_ids[split]:
+                        print('Skipping {}: Not verified...'.format(row['ImageID']))
+                        continue
+
                     xmin = float(row['XMin'])
                     ymin = float(row['YMin'])
                     xmax = float(row['XMax'])
@@ -128,15 +132,17 @@ def main():
                     assert 0 <= ymin < 1, bbox
                     assert 0 < xmax <= 1, bbox
                     assert 0 < ymax <= 1, bbox
-                    line = '{} {:1.7f} {:1.7f} {:1.7f} {:1.7f}\n'.format(
-                        label_index,
-                        (xmin + xmax) / 2.0,
-                        (ymin + ymax) / 2.0,
-                        xmax - xmin,
-                        ymax - ymin)
-                    lines.append(line)
+                    for li in label_index if isinstance(label_index, (tuple, list)) else ( label_index, ):
+                        line = '{} {:1.7f} {:1.7f} {:1.7f} {:1.7f}\n'.format(
+                                li,
+                                (xmin + xmax) / 2.0,
+                                (ymin + ymax) / 2.0,    
+                                xmax - xmin,
+                                ymax - ymin)
+                        lines.append(line)
                     assert '' == lines_id or row['ImageID'] == lines_id, '{}, {}'.format(row['ImageID'], lines_id)
                     lines_id = row['ImageID']
+
                 if use_for_negative or lines:
                     write_lines(flist, OUT_dir, NAME, split, lines_id, lines)
 

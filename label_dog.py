@@ -10,9 +10,10 @@ from label_default import OpenImagesLabelNames, COCOLabelNames, ILSVRCLabelNames
 
 class DogLabelNames(LabelNames):
     @classmethod
-    def init(self, file=None):
+    def init(cls, file=None):
         super().init(file, expected_num=1)
-        assert 'dog' in self.label_names()
+        assert 'dog' in cls.label_names()
+        return cls
 
 class DogVOCLabelNames(MappedLabelNames):
     _neg = ( 'cat', 'cow', 'horse', 'sheep', )
