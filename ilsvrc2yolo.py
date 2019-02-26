@@ -7,14 +7,31 @@
 
 import os
 import pathlib
-import math
+import contextlib
 from xml.etree import ElementTree as ET
-use_mapping=False
-if use_mapping:
-    #from label_dog import DogILSVRCLabelNames as ILSVRCLabelNames
-    from label_chihuahua import ChihuahuaILSVRCLabelNames as ILSVRCLabelNames
-else:
+from bbox import BBox
+use_mapping=True
+if not use_mapping:
     from label_default import ILSVRCLabelNames
+    ILSVRCLabelNames.init('/data/huge/ILSVRC/LOC_synset_mapping.txt')
+    assert 0 <= ILSVRCLabelNames.label_index('n02085620')
+    assert 0 <= ILSVRCLabelNames.label_index('n02085782')
+    assert 0 <= ILSVRCLabelNames.label_index('n02088364')
+    OUT_dir = '/data/huge/ILSVRC/yolo'
+elif True:
+    from label_chihuahua import ChihuahuaILSVRCLabelNames as ILSVRCLabelNames
+    ILSVRCLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
+    assert set((1, 0)) == set(ILSVRCLabelNames.label_index('n02085620'))
+    assert 0 == ILSVRCLabelNames.label_index('n02085782')
+    assert 0 == ILSVRCLabelNames.label_index('n02088364')
+    OUT_dir = '/data/work/dog/00input-chihuahua'
+else:
+    from label_dog import DogILSVRCLabelNames as ILSVRCLabelNames
+    ILSVRCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
+    assert 0 == ILSVRCLabelNames.label_index('n02085620')
+    assert 0 == ILSVRCLabelNames.label_index('n02085782')
+    assert 0 == ILSVRCLabelNames.label_index('n02088364')
+    OUT_dir = '/data/work/dog/00input-dog'
 resume=False
 
 _min_x_w = 9999999999
@@ -28,6 +45,7 @@ _max_h_w = 0
 _have_difficult = False
 
 def xml2yolo(xml, yolo, yolo_wo_difficult):
+    global resume
     global _min_x_w, _min_y_h, _max_x_w, _max_y_h
     global _max_w, _max_h, _max_w_h, _max_h_w
     global _have_difficult
@@ -77,43 +95,22 @@ def xml2yolo(xml, yolo, yolo_wo_difficult):
         is_difficult = (0 != int(tree_obj.find('difficult').text.strip()))
 
         tree_bbox = tree_obj.find('bndbox')
-        xmin, ymin, xmax, ymax = tuple(map(lambda k: float(tree_bbox.find(k).text.strip()), ('xmin', 'ymin', 'xmax', 'ymax')))
-        assert 0 <= math.floor(xmin) < w, '{}: xmin: {}, {}'.format(xml, xmin, w)
-        assert 0 <= math.floor(ymin) < h, '{}: ymin: {}, {}'.format(xml, ymin, h)
-        assert 0 <= math.ceil(xmax)  < w, '{}: xmax: {}, {}'.format(xml, xmax, w)
-        assert 0 <= math.ceil(ymax)  < h, '{}: ymax: {}, {}'.format(xml, ymax, h)
-        if _min_x_w > xmin / w:
-            _min_x_w = xmin / (w - 1)
+        bbox = BBox(hw=(h, w), type_=BBox.ILSVRC, bbox=tuple(map(lambda k: float(tree_bbox.find(k).text.strip()), ('xmin', 'ymin', 'xmax', 'ymax'))))
+        xmin, ymin, xmax, ymax = bbox.get(type_=BBox.OPEN_IMAGES)
+        if _min_x_w > xmin:
+            _min_x_w = xmin
             print('New min xmin / (width-1): {}'.format(_min_x_w))
-        if _min_y_h > ymin / h:
-            _min_y_h = ymin / (h - 1)
+        if _min_y_h > ymin:
+            _min_y_h = ymin
             print('New min ymin / (height-1): {}'.format(_min_y_h))
-        if _max_x_w < xmax / (w - 1):
-            _max_x_w = xmax / (w - 1)
+        if _max_x_w < xmax:
+            _max_x_w = xmax
             print('New max xmax / (width-1): {}'.format(_max_x_w))
-        if _max_y_h < ymax / (h - 1):
-            _max_y_h = ymax / (h - 1)
+        if _max_y_h < ymax:
+            _max_y_h = ymax
             print('New max ymax / (height-1): {}'.format(_max_y_h))
-
-        # 0, 1:
-        #  width=2
-        #  center = (0 + 1) / 2 / (2-1) = 0.5
-        #  w = (1 - 0 + 1) / 2 = 1
-        # 0, 2:
-        #  width=3
-        #  center = (0 + 2) / 2 / (3-1) = 0.5
-        #  w = (2 - 0 + 1) / 3 = 1
-        # 0, 3:
-        #  width = 4
-        #  center = (0 + 3) / 2 / (4-1) = 0.5
-        #  w = (3 - 0 + 1) / 4 = 1
         for li in label_index if isinstance(label_index, (tuple, list)) else ( label_index, ):
-            line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(
-                    li,
-                    (xmin + xmax) / 2.0 / (w - 1),
-                    (ymin + ymax) / 2.0 / (h - 1),
-                    (xmax - xmin + 1) / w,
-                    (ymax - ymin + 1) / h)
+            line = '{} {:1.15f} {:1.15f} {:1.15f} {:1.15f}\n'.format(li, *bbox.get(type_=BBox.YOLO))
             lines.append(line)
             if is_difficult:
                 _have_difficult = True
@@ -143,33 +140,19 @@ def main():
     global _min_x_w, _min_y_h, _max_x_w, _max_y_h
     global _max_w, _max_h, _max_w_h, _max_h_w
     global _have_difficult
+    global OUT_dir
 
     #####
     # input
     ILSVRC_dir = '/data/huge/ILSVRC'
-    if use_mapping:
-        #ILSVRCLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
-        ILSVRCLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/data/huge/ILSVRC/LOC_synset_mapping.txt')
-        assert set((1, 0)) == set(ILSVRCLabelNames.label_index('n02085620'))
-        assert 0 == ILSVRCLabelNames.label_index('n02085782')
-        assert 0 == ILSVRCLabelNames.label_index('n02088364')
-    else:
-        ILSVRCLabelNames.init('/data/huge/ILSVRC/LOC_synset_mapping.txt')
-        assert 0 <= ILSVRCLabelNames.label_index('n02085620')
-        assert 0 <= ILSVRCLabelNames.label_index('n02085782')
-        assert 0 <= ILSVRCLabelNames.label_index('n02088364')
     files = {
         'train': os.path.join(ILSVRC_dir, 'ImageSets/CLS-LOC/train_loc.txt'),
           'val': os.path.join(ILSVRC_dir, 'ImageSets/CLS-LOC/val.txt'),
+         'test': os.path.join(ILSVRC_dir, 'ImageSets/CLS-LOC/test.txt'),
     }
 
     #####
     # output
-    if use_mapping:
-        #OUT_dir = '/data/work/dog/00input-dog'
-        OUT_dir = '/data/work/dog/00input-chihuahua'
-    else:
-        OUT_dir = '/data/huge/ILSVRC/yolo'
     NAME='ilsvrc'
 
     for d in ( 'images', 'labels', 'labels-wo-difficult', 'lists' ):
@@ -179,9 +162,11 @@ def main():
         os.symlink(os.path.join(ILSVRC_dir, 'Data/CLS-LOC'), os.path.join(OUT_dir, 'images', NAME))
 
     # create labels and lists
-    with open(os.path.join(OUT_dir, 'lists', NAME + '.txt'), 'w') as fo:
+    with open(os.path.join(OUT_dir, 'lists', NAME + '.txt'), 'w') if use_mapping else contextlib.nullcontext() as fom:
         for split, file in files.items():
-            with open(file, 'r') as fi:
+            with open(file, 'r') as fi, \
+              contextlib.nullcontext() if use_mapping else open(os.path.join(OUT_dir, 'lists', split + '.txt'), 'w') as fos:
+                fo = fom if use_mapping else fos
                 prev_yolo_dir = ''
                 for line in fi:
                     id_ = line.split()
@@ -198,15 +183,20 @@ def main():
                             break
                     if not img: raise FileNotFoundError(img_stem)
                     img = pathlib.PurePath(img).as_posix()
-                    if xml2yolo(xml, yolo, yolo_wo_difficult):
+                    if os.path.exists(xml):
+                        if xml2yolo(xml, yolo, yolo_wo_difficult):
+                            fo.write('{}\n'.format(img))
+                            cur_yolo_dir = os.path.dirname(yolo)
+                            if prev_yolo_dir != cur_yolo_dir:
+                                prev_yolo_dir = cur_yolo_dir
+                                print('{} -> {}'.format(xml, yolo))
+                        else:
+                            assert use_mapping
+                    elif not use_mapping:
+                        assert 'test' == split
                         fo.write('{}\n'.format(img))
-                        cur_yolo_dir = os.path.dirname(yolo)
-                        if prev_yolo_dir != cur_yolo_dir:
-                            prev_yolo_dir = cur_yolo_dir
-                            print('{} -> {}'.format(xml, yolo))
-                    else:
-                        assert use_mapping
 
+    print('')
     print('max width : {}'.format(_max_w))
     print('max height: {}'.format(_max_h))
     print('max width  / height    : {:f}'.format(_max_w_h))
@@ -218,6 +208,8 @@ def main():
     print('have difficult: {}'.format(_have_difficult))
     if not _have_difficult:
         print('remove redundant directory manually: {}'.format(os.path.join(OUT_dir, 'labels-wo-difficult')))
+    if not use_mapping:
+        print('to create trainval: cat lists/train.txt lists/val.txt >lists/trainval.txt')
 
 # =============================================================================
 # max width : 4992.0

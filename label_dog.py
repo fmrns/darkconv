@@ -47,7 +47,7 @@ class DogOpenImagesLabelNames(MappedLabelNames):
     def init(cls, fileDog=None, fileOpenImages=None):
         super().init(DogLabelNames.init(fileDog), OpenImagesLabelNames.init(fileOpenImages),
               label_mapper=cls._mapper, file_or_tuple_for_negative=cls._neg)
-        assert 'dog' in cls.label_names()
+        assert 'dog' in cls.label_names_dst()
         assert  0 == cls.label_index('/m/0bt9lr')
         assert -1 == cls.label_index('/m/03k3r')
         return cls
@@ -180,7 +180,7 @@ class DogILSVRCLabelNames(MappedLabelNames):
         for key in cls._dog:
             mapper[key] = 'dog'
         super().init(DogLabelNames.init(fileDog), ILSVRCLabelNames.init(fileILSVRC), label_mapper=mapper)
-        assert 'dog' in cls.label_names()
+        assert 'dog' in cls.label_names_dst()
         assert 0 == cls.label_index('n02085620')
         assert 0 == cls.label_index('n02085782')
         assert 0 == cls.label_index('n02113978')

@@ -12,25 +12,35 @@ import os
 import pathlib
 import glob
 use_mapping=True
-#from label_dog import DogCOCOLabelNames as COCOLabelNames
-from label_chihuahua import ChihuahuaCOCOLabelNames as COCOLabelNames
-resume=False
-
-def main():
-    #####
-    # input: follow the procedure described on https://pjreddie.com/darknet/yolo/
-    COCO_images_dir = '/data/huge/COCO/coco/images'
-    COCO_labels_dir = '/data/huge/COCO/yolo/labels'
+if True:
+    from label_chihuahua import ChihuahuaCOCOLabelNames as COCOLabelNames
     COCOLabelNames.init('/data/work/dog/00input-chihuahua/chihuahua.txt', '/opt/darknet/data/coco.names')
     assert 'dog' in COCOLabelNames.label_names()
     assert 0 <= COCOLabelNames.label_index_src('dog')
     assert 0 == COCOLabelNames.label_index_dst('dog')
     assert 1 == COCOLabelNames.label_index_dst('chihuahua')
+    OUT_dir = '/data/work/dog/00input-chihuahua'
+else:
+    from label_dog import DogCOCOLabelNames as COCOLabelNames
+    COCOLabelNames.init('/data/work/dog/00input-dog/dog.txt', '/opt/darknet/data/coco.names')
+    assert 'dog' in COCOLabelNames.label_names()
+    assert 0 == COCOLabelNames.label_index('dog')
+    assert 0 <= COCOLabelNames.label_index_src('dog')
+    assert 0 == COCOLabelNames.label_index_dst('dog')
+    OUT_dir = '/data/work/dog/00input-dog'
+resume=False
+
+def main():
+    global OUT_dir, resume
+
+    #####
+    # input: follow the procedure described on https://pjreddie.com/darknet/yolo/
+    COCO_images_dir = '/data/huge/COCO/coco/images'
+    COCO_labels_dir = '/data/huge/COCO/yolo/labels'
     splits = ( 'train2014', 'val2014', )
 
     #####
     # output
-    OUT_dir = '/data/work/dog/00input-chihuahua'
     NAME='coco'
 
     for d in ( 'images', 'labels', 'lists' ):
@@ -72,13 +82,17 @@ def main():
                     if not img: raise FileNotFoundError(img_stem)
                     img = pathlib.PurePath(img).as_posix()
                     bbox_out = os.path.join(OUT_dir, 'labels', NAME, rel)
-                    print('write {}'.format(bbox_out))
+                    print(',{}'.format(os.path.basename(bbox_out)), end='')
+                    if not resume and os.path.exists(bbox_out):
+                        raise FileExistsError(bbox_out)
                     with open(bbox_out, 'w') as fbbox_out:
                         for line in lines:
                             fbbox_out.write(line)
                     flist.write('{}\n'.format(img))
                 else:
-                    print('skip {}'.format(os.path.basename(bbox_in)))
+                    #print('skip {}'.format(os.path.basename(bbox_in)))
+                    print('.', end='', flush=True)
+    print('({})'.format(OUT_dir))
 
 if __name__=='__main__':
     main()
