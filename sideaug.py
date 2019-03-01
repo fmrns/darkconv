@@ -23,7 +23,7 @@ def matrixRotate(hw, rad, scale=1):
          ( (  a, b, ),
            ( -b, a, ), ))
     # (w-1, 0), (0, h-1), (w-1, h-1)
-    points = np.array( 
+    points = np.array(
        ( ( w-1,   0 ),
          (   0, h-1 ),
          ( w-1, h-1 ), ))
@@ -49,17 +49,17 @@ interps = ( cv2.INTER_LINEAR, cv2.INTER_AREA, cv2.INTER_NEAREST, cv2.INTER_CUBIC
 class BBoxes():
     BACKGROUND_RANDOM = -1
     BACKGROUND_RANDOM_PLAIN = -2
-    
+
     def __init__(self, *, image=None, bboxes=None):
         self._image = image
         self._bboxes = bboxes
         for bbox in bboxes:
             bbox.set_size(hw=image.shape[:2])
-    
+
     @property
     def image(self):
         return self._image
-    
+
     @property
     def bboxes(self):
         return self._bboxes
@@ -92,14 +92,14 @@ class BBoxes():
                                      flags=interpolation, borderMode=cv2.BORDER_TRANSPARENT)
         for bbox in self._bboxes:
             bbox.warpAffine(M, hw[::-1])
-        
+
     def rotate90(self, right_angle, jitter_degree=5, jitter_scale=.3):
         jitter_rad = math.pi * jitter_degree / 180
         self.rotate(right_angle * math.pi / 2 + random.uniform(-jitter_rad, jitter_rad),
                     scale=1 + random.uniform(-jitter_scale, jitter_scale),
                     interpolation=random.choice(interps),
                     background=random.choice(( BBoxes.BACKGROUND_RANDOM, BBoxes.BACKGROUND_RANDOM_PLAIN )))
-    
+
     def draw(self, bgr=(255, 255, 0), px=5):
         rc = self._image
         for bbox in self._bboxes:
@@ -112,7 +112,7 @@ if __name__=='__main__':
     #orig_label_dir = 'labels.orig'
     orig_image_dir = 'images.orig'
     orig_label_dir = 'labels.orig'
-    
+
     # new_xxx_dir's are the directories, listed in the image list.
     new_image_dir  = 'images'
     new_label_dir  = 'labels'
@@ -133,7 +133,7 @@ if __name__=='__main__':
         out_label_dir = tempfile.mkdtemp(prefix='tmp.', dir=os.path.dirname(new_label_dir))
     assert not os.path.exists(orig_image_dir) or not os.path.samefile(out_image_dir, orig_image_dir), '{}, {}'.format(out_image_dir, orig_image_dir)
     assert not os.path.exists(orig_label_dir) or not os.path.samefile(out_label_dir, orig_label_dir), '{}, {}'.format(out_label_dir, orig_label_dir)
-    
+
     with open(train_txt, 'r', newline='\n') as image_list:
         for image_file in image_list:
             if image_file.endswith('\n'):
@@ -145,7 +145,7 @@ if __name__=='__main__':
             in_label_file = os.path.join(in_label_dir, rel_label_file)
             out_image_file = os.path.join(out_image_dir, rel_image_file)
             out_label_file = os.path.join(out_label_dir, rel_label_file)
-            
+
             print('Processing {}'.format(rel_image_file))
             os.makedirs(os.path.dirname(out_image_file), exist_ok=True)
             os.makedirs(os.path.dirname(out_label_file), exist_ok=True)
@@ -202,7 +202,7 @@ if __name__=='__main__':
         os.rename(new_label_dir, orig_label_dir)
         print('{} -> {}'.format(out_label_dir, new_label_dir))
         os.rename(out_label_dir, new_label_dir)
-            
+
 # =============================================================================
 #     import matplotlib.pyplot as plt
 #     #bgr = cv2.imread('/data/huge/AI/G/images/DSC_0008.JPG', cv2.IMREAD_COLOR)

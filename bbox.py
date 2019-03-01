@@ -12,10 +12,10 @@ class BBox():
     VOC=1
     ILSVRC=2
     OPEN_IMAGES=3
-    
-    h_1 = None 
+
+    h_1 = None
     w_1 = None
-    
+
     @staticmethod
     def prefer_small(p, newp, eps):
         dlt = newp - p
@@ -28,7 +28,7 @@ class BBox():
 
     def is_absolute(self):
         return self._type in ( BBox.VOC, BBox.ILSVRC )
-    
+
     def calc_absolute(self):
         if not self.is_absolute():
             self.xmin = self._xmin * self.w_1
@@ -78,7 +78,7 @@ class BBox():
         assert 0 <= self._ymin < 1, '{}'.format(self._ymin)
         assert 0 < self._xmax <= 1, '{},{},{}'.format(self._xmax, self.xmax, self.w_1)
         assert 0 < self._ymax <= 1, '{},{},{}'.format(self._ymax, self.ymax, self.h_1)
-        
+
     def __init__(self, *, hw=None, type_, bbox, label=None, eps=10e-2):
         self._type = type_
         self._label = label
@@ -148,7 +148,7 @@ class BBox():
         else:
             assert not hasattr(self, 'xmin')
             assert not hasattr(self, 'xmax')
-        
+
     def v_flip(self):
         self.cy = 1 - self.cy
         self._ymin, self._ymax = ( 1 - self._ymax, 1 - self._ymin )
@@ -177,7 +177,7 @@ class BBox():
         self.h_1 = wh[1] - 1
         self.calc_relative()
         self.calc_absolute()
-        
+
     def draw(self, cv2img, bgr=(255, 255, 0), px=5):
         h, w = cv2img.shape[:2]
         if self.h_1 or self.w_1:
@@ -188,5 +188,5 @@ class BBox():
             self.w_1 = w - 1
             self.calc_int()
         return cv2.rectangle(np.copy(cv2img), (self.xmin, self.ymin) , (self.xmax, self.ymax), bgr, px)
-    
+
 # end of file
