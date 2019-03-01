@@ -44,7 +44,7 @@ def main():
         for bbox_in in glob.glob(pathlib.PurePath(os.path.join(YOLO_labels_dir, '*.txt')).as_posix(), recursive=False):
             if os.path.samefile(bbox_in, YOLO_classes_txt): continue
             lines = []
-            use_for_negative = False
+            #use_for_negative = False
             with open(bbox_in, 'r', newline='\n') as fbbox_in:
                 for line in fbbox_in:
                     try:
@@ -61,27 +61,27 @@ def main():
                             lines.append('{} {}'.format(i, bbox))
                     elif 0 <= id_:
                         lines.append('{} {}'.format(id_, bbox))
-                    else:
-                        use_for_negative = True
-            if use_for_negative or lines:
-                rel = os.path.relpath(bbox_in, start=YOLO_labels_dir)
-                img_stem = os.path.join('images', NAME, rel[:-4])
-                img = None
-                for ext in ('.jpg', '.png', '.jpeg', ):
-                    for ex in ( ext, ext.upper() ):
-                        if os.path.isfile(os.path.join(OUT_dir, img_stem + ex)):
-                            img = img_stem + ex
-                            break
-                if not img: raise FileNotFoundError(img_stem)
-                img = pathlib.PurePath(img).as_posix()
-                bbox_out = os.path.join(OUT_dir, 'labels', NAME, rel)
-                print('write {}'.format(bbox_out))
-                with open(bbox_out, 'w') as fbbox_out:
-                    for line in lines:
-                        fbbox_out.write(line)
-                flist.write('{}\n'.format(img))
-            else:
-                print('skip {}'.format(os.path.basename(bbox_in)))
+                    #else:
+                    #    use_for_negative = True
+            #if use_for_negative or lines:
+            rel = os.path.relpath(bbox_in, start=YOLO_labels_dir)
+            img_stem = os.path.join('images', NAME, rel[:-4])
+            img = None
+            for ext in ('.jpg', '.png', '.jpeg', ):
+                for ex in ( ext, ext.upper() ):
+                    if os.path.isfile(os.path.join(OUT_dir, img_stem + ex)):
+                        img = img_stem + ex
+                        break
+            if not img: raise FileNotFoundError(img_stem)
+            img = pathlib.PurePath(img).as_posix()
+            bbox_out = os.path.join(OUT_dir, 'labels', NAME, rel)
+            print('write {}'.format(bbox_out))
+            with open(bbox_out, 'w') as fbbox_out:
+                for line in lines:
+                    fbbox_out.write(line)
+            flist.write('{}\n'.format(img))
+            #else:
+            #    print('skip {}'.format(os.path.basename(bbox_in)))
 
 if __name__=='__main__':
     main()
