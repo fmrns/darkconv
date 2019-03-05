@@ -13,7 +13,7 @@ import pathlib
 import math
 import cv2
 from bbox import BBox
-from dog_label import DogLabelNames
+from label_chihuahua import ChihuahuaLabelNames as LabelNames
 
 # darknet/src/utils.c
 def find_replace(s, orig, targ):
@@ -85,14 +85,17 @@ def main():
 
     eps = 10e-5
     prec_threshold = 0
-    images_dir = '/data/work/dog/00test-dog/images'
-    labels_dir = find_replace(images_dir, 'images', 'labels')
+    # input
+    predefined_labels = '/data/work/dog/00input-chihuahua/chihuahua.txt'
     results_dir = 'results'
-    predefined_labels = '/data/work/dog/00input-dog/dog.txt'
-    DogLabelNames.init(predefined_labels)
-    labelImg = []
-    for label in DogLabelNames.label_names():
-        for pred in glob.glob(pathlib.PurePath(results_dir).as_posix() + '/**/comp4_det_test_' + label + '.txt'):
+    images_dir = 'images.test'
+    # output
+    labels_dir = find_replace(images_dir, 'images', 'labels')
+    LabelNames.init(predefined_labels)
+    labelImgNotice = []
+    for label in LabelNames.label_names():
+        print('Label {}'.format(label))
+        for pred in glob.glob(pathlib.PurePath(results_dir).as_posix() + '/**/comp4_det_test_' + label + '.txt', recursive=True):
             bboxes = []
             bboxes_id = ''
             rel_dir = os.path.dirname(os.path.relpath(pred, start=results_dir))
@@ -100,7 +103,7 @@ def main():
             lbl_dir = os.path.join(labels_dir, rel_dir)
             os.makedirs(lbl_dir, exist_ok=True)
             cls_file = os.path.join(lbl_dir, 'classes.txt')
-            DogLabelNames.save(cls_file)
+            LabelNames.save(cls_file)
             labelImgNotice.append('python3 /opt/labelImg/labelImg.py {} {} {}'.format(
                 pathlib.PurePath(img_dir).as_posix(),
                 pathlib.PurePath(cls_file).as_posix(),
@@ -117,7 +120,7 @@ def main():
                         write_label(img_dir, bboxes_id, label, bboxes)
                         bboxes = []
                     bboxes_id = id_
-                    prec, *bbox_tuple = flts
+                    prec, *bbox_tuple = tuple(map(float, flts))
                     if 1 > len(bboxes) or prec >= prec_threshold:
                         bboxes.append(bbox_tuple)
                 if bboxes:
@@ -134,9 +137,9 @@ def main():
         with open(lbl_file, 'w', newline='\n') as flbl:
             for filex in glob.glob(pathlib.PurePath(lbl_file).as_posix() + '.*'):
                 ext = pathlib.PurePath(filex).suffix[1:]
-                if ext not in DogLabelNames.label_names():
+                if ext not in LabelNames.label_names():
                     raise ValueError('Unknown label: {}, {}'.format(ext, lbl_file))
-                lbl =  DogLabelNames.label_index(ext)
+                lbl =  LabelNames.label_index(ext)
                 assert 0 <= lbl, '{}: {}'.format(ext, lbl)
                 with open(filex, 'r', newline='\n') as f:
                     for line in f:
