@@ -270,7 +270,7 @@ if __name__=='__main__':
     params = {
         'orig_image_dir': 'images.orig/G',
         'orig_label_dir': 'labels.orig/G',
-          'in_list_file': 'lists/G.txt',
+          'in_list_file': 'lists/G.txt.orig',
      'in_list_file_base': 'images/G',
 
          'new_image_dir': 'images/G.0',
